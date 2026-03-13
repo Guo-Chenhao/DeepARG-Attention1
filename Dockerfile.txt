@@ -1,0 +1,51 @@
+# ------------------------------------------------------------------
+# 基于带 CUDA 11.7 和 cuDNN 8 的 Ubuntu 20.04 LTS 官方基础镜像
+# ------------------------------------------------------------------
+FROM nvidia/cuda:11.7.1-cudnn8-runtime-ubuntu20.04
+
+# 设置环境变量，避免安装过程中的交互卡顿
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# 安装系统级依赖库及编译工具
+RUN apt-get update && apt-get install -y \
+    wget git build-essential zlib1g-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------------
+# 源码编译安装 CD-HIT v4.8.1 (严格对齐论文软硬件配置)
+# ------------------------------------------------------------------
+WORKDIR /opt/tools
+RUN wget https://github.com/weizhongli/cdhit/releases/download/V4.8.1/cd-hit-v4.8.1-2019-0228.tar.gz && \
+    tar -zxvf cd-hit-v4.8.1-2019-0228.tar.gz && \
+    cd cd-hit-v4.8.1-2019-0228 && \
+    make && \
+    cp cd-hit cd-hit-est cd-hit-2d cd-hit-clstr_2_blm8.pl /usr/local/bin/ && \
+    cd .. && rm -rf cd-hit*
+
+# ------------------------------------------------------------------
+# 安装 Miniconda 并部署指定的 Python 3.9.16 环境
+# ------------------------------------------------------------------
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda.sh && \
+    bash ~/miniconda.sh -b -p /opt/conda && \
+    rm ~/miniconda.sh
+ENV PATH=/opt/conda/bin:$PATH
+
+RUN conda create -y -n deeparg python=3.9.16 && conda clean -afy
+ENV PATH=/opt/conda/envs/deeparg/bin:$PATH
+
+# ------------------------------------------------------------------
+# 拷贝依赖树并进行安装
+# ------------------------------------------------------------------
+WORKDIR /workspace/DeepARG-Attention
+COPY requirements.txt .
+
+# 指向官方 cu117 index 以安装 PyTorch 2.0.1
+RUN pip install --no-cache-dir -r requirements.txt \
+    --extra-index-url https://download.pytorch.org/whl/cu117
+
+# 拷贝全仓代码
+COPY . .
+
+# 默认启动命令
+CMD ["bash"]

@@ -1,0 +1,11 @@
+# ---- Deep Learning Frameworks ----
+torch==2.0.1+cu117
+torchvision==0.15.2+cu117
+
+# ---- Data Processing & Machine Learning ----
+scikit-learn==1.2.2
+pandas==1.5.3
+biopython==1.81
+
+# ---- Utils ----
+tqdm==4.65.0
